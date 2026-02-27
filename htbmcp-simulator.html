@@ -803,6 +803,10 @@
       <div class="section-title">Request Headers</div>
       <div class="request-builder">
         <div class="builder-title">Build your request</div>
+        <div id="sessionLockNotice" style="display:none;margin-bottom:10px;padding:7px 10px;background:rgba(200,130,26,0.13);border-left:3px solid var(--amber);border-radius:3px;font-size:0.72rem;color:var(--amber);font-family:'JetBrains Mono',monospace;">
+          ⚠ Session open — headers are locked. RFC 1516 §3.1.1: parameters are negotiated at TAP time.<br>
+          Close the tap to change style, foam, temperature, or vessel.
+        </div>
         <div class="header-row">
           <span class="header-label">Accept-Style:</span>
           <select id="hdrStyle">
@@ -1057,6 +1061,24 @@ function updateButtons() {
   document.getElementById('btnWhen').disabled = !tap.pouring;
   document.getElementById('btnTapClose').disabled = !tap.sessionOpen;
   document.getElementById('btnTapClose').style.opacity = tap.sessionOpen ? '1' : '0.4';
+
+  // RFC 1516 §3.1.1 — headers are negotiated at TAP time, not per-POUR.
+  // Lock fields when session is open to reflect protocol semantics.
+  const sessionLocked = tap.sessionOpen;
+  ['hdrStyle', 'hdrFoam', 'hdrVessel'].forEach(id => {
+    const el = document.getElementById(id);
+    el.disabled = sessionLocked;
+    el.style.opacity = sessionLocked ? '0.45' : '1';
+    el.style.cursor = sessionLocked ? 'not-allowed' : '';
+  });
+  const tempEl = document.getElementById('hdrTemp');
+  tempEl.disabled = sessionLocked;
+  tempEl.style.opacity = sessionLocked ? '0.45' : '1';
+  tempEl.style.cursor = sessionLocked ? 'not-allowed' : '';
+
+  // Show/hide the session-lock notice
+  const notice = document.getElementById('sessionLockNotice');
+  if (notice) notice.style.display = sessionLocked ? 'block' : 'none';
 }
 
 function updateMugVisual(beerPct, foamPct) {
