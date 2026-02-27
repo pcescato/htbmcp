@@ -731,7 +731,117 @@
   }
 
   .overlay.visible, .wine-glass-msg.visible { display: block; }
-</style>
+
+  /* ══════════════════════════════════════════════════════
+     MOBILE RESPONSIVE  (≤ 768px)
+     Strategy: single-column scroll + sticky tab bar
+     No DOM duplication — tabs just scroll to sections.
+  ══════════════════════════════════════════════════════ */
+
+  .mobile-tabbar {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+
+    /* ── Base ── */
+    body { font-size: 13px; }
+
+    header {
+      padding: 12px 14px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    header h1 { font-size: 1.1rem; }
+    header .version { font-size: 0.6rem; }
+    header .rfc-badge { font-size: 0.55rem; padding: 2px 6px; margin-left: 0; }
+
+    /* ── Tab bar ── */
+    .mobile-tabbar {
+      display: flex;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+    }
+    .mobile-tab-btn {
+      flex: 1;
+      padding: 10px 4px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .mobile-tab-btn.active {
+      color: var(--amber);
+      border-bottom-color: var(--amber);
+    }
+
+    /* ── Layout: single column ── */
+    .main-grid {
+      display: flex;
+      flex-direction: column;
+      min-height: unset;
+    }
+
+    .left-panel {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .log-panel {
+      height: 70vh;
+      min-height: 400px;
+    }
+
+    /* ── Tap section ── */
+    .tap-section {
+      padding: 16px 14px;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .tap-info { width: 100%; }
+    .tap-id { font-size: 0.72rem; text-align: center; }
+
+    /* ── Controls ── */
+    .controls-section { padding: 0; }
+    .section-title { padding: 10px 14px 5px; }
+    .tap-selector { padding: 0 14px 10px; flex-wrap: wrap; gap: 5px; }
+    .tap-chip { font-size: 0.62rem; padding: 5px 8px; }
+    .request-builder { margin: 0 14px 10px; padding: 10px 12px; }
+    .builder-title { font-size: 0.58rem; }
+    .header-row { gap: 8px; flex-wrap: wrap; }
+    .header-label { font-size: 0.62rem; min-width: 130px; }
+    select, input { font-size: 0.7rem; padding: 4px 6px; }
+
+    .method-grid {
+      margin: 0 14px 14px;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .method-btn { padding: 12px 8px; }
+    .method-name { font-size: 0.75rem; }
+    .method-desc { font-size: 0.55rem; }
+
+    /* ── Log ── */
+    .log-header { padding: 10px 14px; }
+    .log-title { font-size: 0.65rem; }
+    .log-entries { padding: 10px 0; }
+    .log-entry { padding: 8px 14px; }
+
+    /* ── Tab visibility: hide non-active sections ── */
+    .mobile-hidden { display: none !important; }
+  }
+
+  </style>
 </head>
 <body>
 
@@ -741,10 +851,18 @@
   <span class="rfc-badge">RFC 1516 · PORT :1414</span>
 </header>
 
+
+<!-- MOBILE TAB BAR -->
+<div class="mobile-tabbar" id="mobileTabbar">
+  <button class="mobile-tab-btn active" id="mtab-tap" onclick="mobileTab('tap')">🍺 Tap</button>
+  <button class="mobile-tab-btn" id="mtab-controls" onclick="mobileTab('controls')">⚙ Headers</button>
+  <button class="mobile-tab-btn" id="mtab-log" onclick="mobileTab('log')">📋 Log</button>
+</div>
+
 <div class="main-grid">
   <!-- LEFT PANEL -->
   <div class="left-panel">
-    <div class="tap-section">
+    <div class="tap-section" id="msec-tap">
       <!-- Visual tap -->
       <div class="tap-visual">
         <div class="keg" id="keg">
@@ -791,7 +909,7 @@
       </div>
     </div>
 
-    <div class="controls-section">
+    <div class="controls-section" id="msec-controls">
       <div class="section-title">Select Tap</div>
       <div class="tap-selector">
         <button class="tap-chip active" onclick="selectTap(0)">tap-1 · IPA</button>
@@ -892,7 +1010,7 @@
   </div>
 
   <!-- RIGHT PANEL — LOG -->
-  <div class="log-panel">
+  <div class="log-panel" id="msec-log">
     <div class="log-header">
       <span class="log-title">Request / Response Log</span>
       <button class="clear-btn" onclick="clearLog()">CLEAR</button>
@@ -1491,6 +1609,59 @@ function closeWineGlass() {
 // Init
 updateTapVisual();
 updateButtons();
+
+// ── MOBILE TABS ──────────────────────────────────────────────────────────────
+
+const MOBILE_SECTIONS = {
+  tap:      ['msec-tap'],
+  controls: ['msec-controls'],
+  log:      ['msec-log'],
+};
+
+function isMobile() {
+  return window.innerWidth <= 768;
+}
+
+function mobileTab(active) {
+  if (!isMobile()) return;
+
+  // Update button states
+  ['tap','controls','log'].forEach(tab => {
+    const btn = document.getElementById('mtab-' + tab);
+    if (btn) btn.classList.toggle('active', tab === active);
+  });
+
+  // Show/hide sections
+  Object.entries(MOBILE_SECTIONS).forEach(([tab, ids]) => {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (tab === active) {
+        el.classList.remove('mobile-hidden');
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        el.classList.add('mobile-hidden');
+      }
+    });
+  });
+}
+
+// Init mobile state on load and resize
+function initMobile() {
+  if (!isMobile()) {
+    // Desktop: remove any mobile-hidden classes
+    document.querySelectorAll('.mobile-hidden').forEach(el => {
+      el.classList.remove('mobile-hidden');
+    });
+    return;
+  }
+  // Mobile: activate tap tab by default
+  mobileTab('tap');
+}
+
+window.addEventListener('DOMContentLoaded', initMobile);
+window.addEventListener('resize', initMobile);
+
 </script>
 </body>
 </html>
