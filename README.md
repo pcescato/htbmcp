@@ -8,7 +8,7 @@
 
 ## What is this?
 
-This repository is a full implementation of **RFC 1516** — the Hyper Text Beer Mug Control Protocol (HTBMCP/1.0), published April 1st, 2026.
+This repository is a full implementation of **RFC 1516** — the Hyper Text Beer Mug Control Protocol (HTBMCP/1.0), to be published April 1st, 2026.
 
 HTBMCP is the spiritual successor to [RFC 2324](https://tools.ietf.org/html/rfc2324) (HTCPCP/1.0, the coffee pot protocol). Where HTCPCP controls coffee pots, HTBMCP controls networked beer taps. The protocol extends HTTP with custom methods, headers, and error codes designed specifically for the distributed dispensing of fermented malt beverages.
 
