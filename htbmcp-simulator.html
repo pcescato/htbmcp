@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTBMCP/1.0 — Interactive Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --amber: #C8821A;
+    --amber-light: #F5B942;
+    --amber-dark: #8B5E0A;
+    --foam: #F5EDD6;
+    --foam-dark: #E8D9B0;
+    --bg: #0D0B08;
+    --bg2: #161209;
+    --bg3: #1F1810;
+    --border: #2A2016;
+    --text: #E8D9B0;
+    --text-dim: #7A6840;
+    --green: #4CAF50;
+    --red: #E53935;
+    --orange: #FF8F00;
+    --blue: #42A5F5;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    background: linear-gradient(180deg, #1a1308 0%, transparent 100%);
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--amber-light);
+    letter-spacing: -0.02em;
+  }
+
+  header .version {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  header .rfc-badge {
+    margin-left: auto;
+    font-size: 0.65rem;
+    color: var(--amber-dark);
+    border: 1px solid var(--amber-dark);
+    padding: 3px 10px;
+    letter-spacing: 0.08em;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    min-height: calc(100vh - 73px);
+  }
+
+  /* LEFT PANEL */
+  .left-panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* TAP VISUALIZATION */
+  .tap-section {
+    padding: 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+  }
+
+  .tap-visual {
+    position: relative;
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .keg {
+    width: 80px;
+    height: 100px;
+    margin: 0 auto;
+    border: 2px solid var(--amber-dark);
+    border-radius: 12px 12px 16px 16px;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg3);
+  }
+
+  .keg-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(180deg, var(--amber-light) 0%, var(--amber) 60%, var(--amber-dark) 100%);
+    transition: height 0.8s ease;
+    border-radius: 0 0 13px 13px;
+  }
+
+  .keg-foam-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    background: var(--foam);
+    opacity: 0;
+    transition: height 0.3s ease, opacity 0.3s ease;
+  }
+
+  .keg-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.1em;
+    z-index: 2;
+  }
+
+  .tap-handle {
+    width: 16px;
+    height: 48px;
+    background: linear-gradient(90deg, var(--amber-dark), var(--amber));
+    margin: 0 auto;
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    transform-origin: top center;
+  }
+
+  .tap-handle.open {
+    transform: rotate(30deg);
+  }
+
+  .tap-handle::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 6px;
+    background: var(--amber-dark);
+    border-radius: 0 0 4px 4px;
+  }
+
+  .pour-stream {
+    width: 4px;
+    height: 0;
+    background: linear-gradient(180deg, var(--amber), var(--amber-light));
+    margin: 0 auto;
+    border-radius: 2px;
+    transition: height 0.5s ease;
+    opacity: 0;
+  }
+
+  .pour-stream.active {
+    height: 40px;
+    opacity: 1;
+    animation: stream-wobble 0.5s ease infinite alternate;
+  }
+
+  @keyframes stream-wobble {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(1.3); }
+  }
+
+  .mug {
+    width: 60px;
+    height: 50px;
+    border: 2px solid var(--amber-dark);
+    border-radius: 4px 4px 8px 8px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg3);
+  }
+
+  .mug::after {
+    content: '';
+    position: absolute;
+    right: -12px;
+    top: 10px;
+    width: 12px;
+    height: 24px;
+    border: 2px solid var(--amber-dark);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+  }
+
+  .mug-beer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    background: linear-gradient(180deg, var(--amber-light) 0%, var(--amber) 100%);
+    transition: height 1s ease;
+  }
+
+  .mug-foam {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 0;
+    background: var(--foam);
+    transition: height 0.3s ease, bottom 1s ease;
+    border-radius: 2px 2px 0 0;
+  }
+
+  /* Status row */
+  .tap-info {
+    flex: 1;
+  }
+
+  .tap-id {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--amber-light);
+    margin-bottom: 16px;
+  }
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+  }
+
+  .stat-label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--amber-light);
+  }
+
+  .stat-value.ok { color: var(--green); }
+  .stat-value.warn { color: var(--orange); }
+  .stat-value.error { color: var(--red); }
+
+  /* CONTROLS */
+  .controls-section {
+    padding: 24px 32px;
+    flex: 1;
+  }
+
+  .section-title {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .method-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .method-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 12px 16px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .method-btn::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+
+  .method-btn.tap::before { background: var(--blue); }
+  .method-btn.pour::before { background: var(--amber); }
+  .method-btn.when::before { background: var(--foam-dark); }
+  .method-btn.get::before { background: var(--green); }
+  .method-btn.propfind::before { background: #AB47BC; }
+
+  .method-btn:hover:not(:disabled) {
+    border-color: var(--amber-dark);
+    background: #221B0F;
+    transform: translateY(-1px);
+  }
+
+  .method-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .method-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .method-name {
+    font-weight: 700;
+    font-size: 0.75rem;
+  }
+
+  .method-btn.tap .method-name { color: var(--blue); }
+  .method-btn.pour .method-name { color: var(--amber-light); }
+  .method-btn.when .method-name { color: var(--foam-dark); }
+  .method-btn.get .method-name { color: var(--green); }
+  .method-btn.propfind .method-name { color: #CE93D8; }
+
+  .method-desc {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    font-weight: 300;
+  }
+
+  /* Request builder */
+  .request-builder {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .builder-title {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .header-label {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    width: 130px;
+    flex-shrink: 0;
+  }
+
+  select, input {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 5px 10px;
+    outline: none;
+    flex: 1;
+    transition: border-color 0.15s;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--amber-dark);
+  }
+
+  select option {
+    background: var(--bg2);
+  }
+
+  /* Tap selector */
+  .tap-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .tap-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .tap-chip.active {
+    border-color: var(--amber);
+    color: var(--amber-light);
+    background: #221B0F;
+  }
+
+  .tap-chip.wine-glass {
+    border-color: #6A1B9A;
+    color: #CE93D8;
+  }
+
+  /* RIGHT PANEL — LOG */
+  .log-panel {
+    background: var(--bg2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .log-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .log-title {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .clear-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  .clear-btn:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+  }
+
+  .log-entries {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .log-entry {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    animation: entry-in 0.2s ease;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .log-entry:hover {
+    background: var(--bg3);
+  }
+
+  @keyframes entry-in {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .entry-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .status-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.03em;
+  }
+
+  .status-badge.s200 { background: rgba(76,175,80,0.15); color: var(--green); border: 1px solid rgba(76,175,80,0.3); }
+  .status-badge.s404 { background: rgba(229,57,53,0.15); color: var(--red); border: 1px solid rgba(229,57,53,0.3); }
+  .status-badge.s406 { background: rgba(255,143,0,0.15); color: var(--orange); border: 1px solid rgba(255,143,0,0.3); }
+  .status-badge.s409 { background: rgba(255,143,0,0.15); color: var(--orange); border: 1px solid rgba(255,143,0,0.3); }
+  .status-badge.s419 { background: rgba(171,71,188,0.15); color: #CE93D8; border: 1px solid rgba(171,71,188,0.3); }
+  .status-badge.s503 { background: rgba(229,57,53,0.15); color: var(--red); border: 1px solid rgba(229,57,53,0.3); }
+
+  .entry-method {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .entry-method.TAP { color: var(--blue); }
+  .entry-method.POUR { color: var(--amber-light); }
+  .entry-method.WHEN { color: var(--foam-dark); }
+  .entry-method.GET { color: var(--green); }
+  .entry-method.PROPFIND { color: #CE93D8; }
+
+  .entry-uri {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+  }
+
+  .entry-body {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    font-weight: 300;
+  }
+
+  .entry-body .key { color: var(--amber-dark); }
+  .entry-body .val { color: var(--text); }
+
+  /* Response detail overlay */
+  .response-detail {
+    display: none;
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 0.62rem;
+    line-height: 1.7;
+    color: var(--text-dim);
+  }
+
+  .response-detail.visible { display: block; }
+  .response-detail .key { color: var(--amber); }
+  .response-detail .str { color: #A5D6A7; }
+  .response-detail .num { color: #90CAF9; }
+  .response-detail .bool-true { color: var(--green); }
+  .response-detail .bool-false { color: var(--red); }
+
+  /* PROPFIND table */
+  .propfind-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.62rem;
+    margin-top: 8px;
+  }
+
+  .propfind-table th {
+    text-align: left;
+    color: var(--text-dim);
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.58rem;
+  }
+
+  .propfind-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .ibu-bar {
+    display: inline-block;
+    height: 4px;
+    background: var(--amber);
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  /* Foam animation */
+  @keyframes foam-rise {
+    0% { height: 0; opacity: 0; }
+    30% { opacity: 1; }
+    100% { height: 15px; opacity: 1; }
+  }
+
+  @keyframes pour-ripple {
+    0% { transform: scaleX(1); opacity: 1; }
+    100% { transform: scaleX(1.5); opacity: 0; }
+  }
+
+  /* Status pulse */
+  .status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  .status-dot.idle { background: var(--text-dim); }
+  .status-dot.tapped { background: var(--blue); animation: pulse 1.5s ease infinite; }
+  .status-dot.pouring { background: var(--amber-light); animation: pulse 0.6s ease infinite; }
+  .status-dot.foam { background: var(--foam-dark); animation: pulse 0.4s ease infinite; }
+  .status-dot.empty { background: var(--red); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* Footer */
+  .footer {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--border);
+    padding: 10px 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    background: var(--bg2);
+  }
+
+  .footer a { color: var(--amber-dark); text-decoration: none; }
+  .footer a:hover { color: var(--amber); }
+
+  .port-badge {
+    margin-left: auto;
+    border: 1px solid var(--border);
+    padding: 2px 10px;
+    letter-spacing: 0.1em;
+  }
+
+  /* Wine glass easter egg */
+  .wine-glass-msg {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg3);
+    border: 1px solid #6A1B9A;
+    padding: 32px;
+    text-align: center;
+    z-index: 999;
+    max-width: 340px;
+    animation: entry-in 0.3s ease;
+  }
+
+  .wine-glass-msg .code {
+    font-size: 2rem;
+    color: #CE93D8;
+    margin-bottom: 8px;
+  }
+
+  .wine-glass-msg .msg {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .wine-glass-msg .close-btn {
+    margin-top: 16px;
+    background: none;
+    border: 1px solid #6A1B9A;
+    color: #CE93D8;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 6px 20px;
+    cursor: pointer;
+  }
+
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 998;
+  }
+
+  .overlay.visible, .wine-glass-msg.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>HTBMCP</h1>
+  <span class="version">Hyper Text Beer Mug Control Protocol / 1.0</span>
+  <span class="rfc-badge">RFC 1516 · PORT :1414</span>
+</header>
+
+<div class="main-grid">
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="tap-section">
+      <!-- Visual tap -->
+      <div class="tap-visual">
+        <div class="keg" id="keg">
+          <div class="keg-foam-layer" id="kegFoam"></div>
+          <div class="keg-fill" id="kegFill" style="height:75%"></div>
+          <div class="keg-label" id="kegLabel">75%</div>
+        </div>
+        <div class="tap-handle" id="tapHandle"></div>
+        <div class="pour-stream" id="pourStream"></div>
+        <div class="mug" id="mug">
+          <div class="mug-beer" id="mugBeer"></div>
+          <div class="mug-foam" id="mugFoam"></div>
+        </div>
+      </div>
+
+      <!-- Tap info -->
+      <div class="tap-info">
+        <div class="tap-id" id="currentTapId">beer://tap-1/pint</div>
+
+        <div class="status-grid">
+          <div class="stat-box">
+            <div class="stat-label">Status</div>
+            <div class="stat-value" id="statStatus">
+              <span class="status-dot idle" id="statusDot"></span>idle
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Keg Level</div>
+            <div class="stat-value ok" id="statLevel">75%</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Style</div>
+            <div class="stat-value" id="statStyle">IPA</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Temp / Pressure</div>
+            <div class="stat-value" id="statTemp">8°C · 2.4 BAR</div>
+          </div>
+        </div>
+
+        <div style="font-size:0.62rem; color:var(--text-dim); line-height:1.7" id="sessionNote">
+          No active session — TAP first
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-section">
+      <div class="section-title">Select Tap</div>
+      <div class="tap-selector">
+        <button class="tap-chip active" onclick="selectTap(0)">tap-1 · IPA</button>
+        <button class="tap-chip" onclick="selectTap(1)">tap-2 · Stout</button>
+        <button class="tap-chip" onclick="selectTap(2)">tap-3 · Trappist</button>
+        <button class="tap-chip wine-glass" onclick="triggerWineGlass()">🍷 wine-glass</button>
+      </div>
+
+      <div class="section-title">Request Headers</div>
+      <div class="request-builder">
+        <div class="builder-title">Build your request</div>
+        <div class="header-row">
+          <span class="header-label">Accept-Style:</span>
+          <select id="hdrStyle">
+            <option value="*">* (any)</option>
+            <option value="IPA" selected>IPA</option>
+            <option value="Lager">Lager</option>
+            <option value="Pilsner">Pilsner</option>
+            <option value="Ale">Ale</option>
+            <option value="Stout">Stout</option>
+            <option value="Porter">Porter</option>
+            <option value="Wheat">Wheat</option>
+            <option value="Sour">Sour</option>
+            <option value="Lambic">Lambic</option>
+            <option value="Trappist">Trappist</option>
+          </select>
+        </div>
+        <div class="header-row">
+          <span class="header-label">Accept-Foam:</span>
+          <select id="hdrFoam">
+            <option value="none">none</option>
+            <option value="light">light (0.5–1cm)</option>
+            <option value="normal" selected>normal (1–2cm) [DEFAULT]</option>
+            <option value="heavy">heavy (2–4cm)</option>
+            <option value="belgian">belgian (implementation-defined)</option>
+          </select>
+        </div>
+        <div class="header-row">
+          <span class="header-label">Accept-Temperature:</span>
+          <input type="number" id="hdrTemp" value="8" min="0" max="20" style="max-width:80px"> <span style="font-size:0.65rem;color:var(--text-dim);margin-left:4px">°C</span>
+        </div>
+        <div class="header-row">
+          <span class="header-label">Vessel-Size:</span>
+          <select id="hdrVessel">
+            <option value="pint">pint</option>
+            <option value="half-pint">half-pint</option>
+            <option value="stein">stein (≥500ml, handle req.)</option>
+            <option value="tulip">tulip (330ml)</option>
+            <option value="goblet">goblet (Trappist only)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-title">Methods</div>
+      <div class="method-grid">
+        <button class="method-btn tap" onclick="doTap()" id="btnTap">
+          <div>
+            <div class="method-name">TAP</div>
+            <div class="method-desc">open session</div>
+          </div>
+        </button>
+        <button class="method-btn pour" onclick="doPour()" id="btnPour" disabled>
+          <div>
+            <div class="method-name">POUR</div>
+            <div class="method-desc">start dispensing</div>
+          </div>
+        </button>
+        <button class="method-btn when" onclick="doWhen()" id="btnWhen" disabled>
+          <div>
+            <div class="method-name">WHEN</div>
+            <div class="method-desc">stop the foam</div>
+          </div>
+        </button>
+        <button class="method-btn get" onclick="doGet()" id="btnGet">
+          <div>
+            <div class="method-name">GET</div>
+            <div class="method-desc">tap status</div>
+          </div>
+        </button>
+        <button class="method-btn propfind" onclick="doPropfind()" id="btnPropfind">
+          <div>
+            <div class="method-name">PROPFIND</div>
+            <div class="method-desc">discover styles</div>
+          </div>
+        </button>
+        <button class="method-btn tap" onclick="doTapClose()" id="btnTapClose" style="opacity:0.4" disabled>
+          <div>
+            <div class="method-name">TAP close</div>
+            <div class="method-desc">end session</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL — LOG -->
+  <div class="log-panel">
+    <div class="log-header">
+      <span class="log-title">Request / Response Log</span>
+      <button class="clear-btn" onclick="clearLog()">CLEAR</button>
+    </div>
+    <div class="log-entries" id="logEntries">
+      <div style="padding:24px 20px; color:var(--text-dim); font-size:0.65rem; line-height:1.8">
+        <div style="color:var(--amber-dark); margin-bottom:12px; font-style:italic">
+          — HTBMCP/1.0 simulator ready —
+        </div>
+        Protocol: RFC 1516<br>
+        Port: 1414 (memorial: Gdansk, 1414)<br>
+        Content-Type: message/mugpot<br>
+        <br>
+        <span style="color:var(--text-dim)">Issue a TAP request to begin.</span><br>
+        <span style="color:var(--text-dim)">A server MUST accept TAP before POUR.</span><br>
+        <br>
+        <span style="color:#4A3820; font-size:0.6rem">Try the 🍷 wine-glass tab for a 419.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>HTBMCP/1.0 Interactive Simulator</span>
+  <span>·</span>
+  <span>Built for <a href="https://dev.to" target="_blank">DEV Community</a> hackathon</span>
+  <span>·</span>
+  <a href="https://github.com/pcescato/htcpcp" target="_blank">github.com/pcescato/htcpcp</a>
+  <span class="port-badge">:1414</span>
+</div>
+
+<!-- Wine glass overlay -->
+<div class="overlay" id="overlay" onclick="closeWineGlass()"></div>
+<div class="wine-glass-msg" id="wineGlassMsg">
+  <div class="code">419</div>
+  <div style="color:#CE93D8; font-weight:700; margin-bottom:12px; font-size:0.85rem">I'm a Wine Glass</div>
+  <div class="msg">
+    A wine glass is not a mug.<br>
+    A wine glass has no handle.<br>
+    Beer poured into a wine glass loses carbonation<br>
+    23% faster — a figure the authors have not verified<br>
+    but feel is directionally correct.<br><br>
+    <span style="color:#6A1B9A; font-size:0.6rem">RFC 1516 §3.3.5</span>
+  </div>
+  <button class="close-btn" onclick="closeWineGlass()">PROVIDE A MUG</button>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+
+const TAPS = [
+  {
+    id: 'tap-1', scheme: 'beer', style: 'IPA',
+    temp: 8, pressure: 2.4, ibu: 55,
+    level: 75, sessionOpen: false, pouring: false,
+    foaming: false, brewVersion: 1,
+    tempRange: [7, 10],
+    compatible: ['IPA']
+  },
+  {
+    id: 'tap-2', scheme: 'beer', style: 'Stout',
+    temp: 11, pressure: 1.8, ibu: 38,
+    level: 42, sessionOpen: false, pouring: false,
+    foaming: false, brewVersion: 1,
+    tempRange: [10, 13],
+    compatible: ['Stout', 'Porter']
+  },
+  {
+    id: 'tap-3', scheme: 'bière', style: 'Trappist',
+    temp: 14, pressure: 2.1, ibu: 28,
+    level: 90, sessionOpen: false, pouring: false,
+    foaming: false, brewVersion: 1,
+    tempRange: [12, 16],
+    compatible: ['Trappist', 'Ale']
+  }
+];
+
+const BEER_STYLES = [
+  { name: 'Lager',    ibu: 18, temp: '3–7°C',   color: '#F5B942' },
+  { name: 'Pilsner',  ibu: 30, temp: '3–7°C',   color: '#F5CB42' },
+  { name: 'Ale',      ibu: 35, temp: '8–12°C',  color: '#C8821A' },
+  { name: 'IPA',      ibu: 55, temp: '7–10°C',  color: '#E07020' },
+  { name: 'Stout',    ibu: 38, temp: '10–13°C', color: '#2A1A0A' },
+  { name: 'Porter',   ibu: 30, temp: '8–12°C',  color: '#3A2010' },
+  { name: 'Wheat',    ibu: 15, temp: '4–7°C',   color: '#F5E088' },
+  { name: 'Sour',     ibu: 10, temp: '10–14°C', color: '#D4C060' },
+  { name: 'Lambic',   ibu: 8,  temp: '10–14°C', color: '#C8A040' },
+  { name: 'Trappist', ibu: 28, temp: '12–16°C', color: '#8B4A10' },
+];
+
+let currentTapIdx = 0;
+let pourTimer = null;
+let mugLevel = 0;
+
+function getTap() { return TAPS[currentTapIdx]; }
+
+// ─── UI HELPERS ───────────────────────────────────────────────────────────────
+
+function selectTap(idx) {
+  currentTapIdx = idx;
+  const tap = getTap();
+  document.querySelectorAll('.tap-chip').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  // Reset mug visual
+  mugLevel = 0;
+  updateMugVisual(0, 0);
+  updateTapVisual();
+  // Sync header defaults
+  document.getElementById('hdrStyle').value = tap.style;
+  document.getElementById('hdrTemp').value = tap.temp;
+  document.getElementById('currentTapId').textContent = `${tap.scheme}://${tap.id}/pint`;
+  updateButtons();
+}
+
+function updateTapVisual() {
+  const tap = getTap();
+  const fill = document.getElementById('kegFill');
+  const label = document.getElementById('kegLabel');
+  const handle = document.getElementById('tapHandle');
+  const statLevel = document.getElementById('statLevel');
+  const statStyle = document.getElementById('statStyle');
+  const statTemp = document.getElementById('statTemp');
+  const statStatus = document.getElementById('statStatus');
+  const statusDot = document.getElementById('statusDot');
+  const sessionNote = document.getElementById('sessionNote');
+
+  fill.style.height = tap.level + '%';
+  label.textContent = tap.level + '%';
+  statLevel.textContent = tap.level + '%';
+  statLevel.className = 'stat-value ' + (tap.level > 30 ? 'ok' : tap.level > 10 ? 'warn' : 'error');
+  statStyle.textContent = tap.style;
+  statTemp.textContent = `${tap.temp}°C · ${tap.pressure} BAR`;
+  handle.classList.toggle('open', tap.sessionOpen);
+
+  let statusText, dotClass;
+  if (tap.level === 0) {
+    statusText = 'empty';
+    dotClass = 'empty';
+    sessionNote.textContent = '503 — Keg empty. The server SHOULD return this rather than dispensing air.';
+  } else if (tap.pouring && tap.foaming) {
+    statusText = 'foam-overflow';
+    dotClass = 'foam';
+    sessionNote.textContent = 'Foam forming — send WHEN to stop it. Enough? Say WHEN.';
+  } else if (tap.pouring) {
+    statusText = 'pouring';
+    dotClass = 'pouring';
+    sessionNote.textContent = 'POUR in progress — mug filling. Send WHEN when foam appears.';
+  } else if (tap.sessionOpen) {
+    statusText = 'tapped';
+    dotClass = 'tapped';
+    sessionNote.textContent = `Session active — brew_version: ${tap.brewVersion}. Ready for POUR.`;
+  } else {
+    statusText = 'idle';
+    dotClass = 'idle';
+    sessionNote.textContent = 'No active session — TAP first';
+  }
+
+  statStatus.innerHTML = `<span class="status-dot ${dotClass}" id="statusDot"></span>${statusText}`;
+}
+
+function updateButtons() {
+  const tap = getTap();
+  document.getElementById('btnTap').disabled = tap.sessionOpen || tap.level === 0;
+  document.getElementById('btnPour').disabled = !tap.sessionOpen || tap.pouring || tap.level === 0;
+  document.getElementById('btnWhen').disabled = !tap.pouring;
+  document.getElementById('btnTapClose').disabled = !tap.sessionOpen;
+  document.getElementById('btnTapClose').style.opacity = tap.sessionOpen ? '1' : '0.4';
+}
+
+function updateMugVisual(beerPct, foamPct) {
+  const mugBeer = document.getElementById('mugBeer');
+  const mugFoam = document.getElementById('mugFoam');
+  mugBeer.style.height = beerPct + '%';
+  if (foamPct > 0) {
+    const foamHeight = foamPct * 0.3;
+    mugFoam.style.height = foamHeight * 60 + 'px';
+    mugFoam.style.bottom = (beerPct * 50 / 100) + 'px';
+  } else {
+    mugFoam.style.height = '0';
+  }
+}
+
+// ─── LOG ─────────────────────────────────────────────────────────────────────
+
+function addLog(method, uri, status, statusText, bodyLines, detailObj) {
+  const log = document.getElementById('logEntries');
+
+  // Remove placeholder
+  const placeholder = log.querySelector('div[style]');
+  if (placeholder && log.children.length === 1) placeholder.remove();
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+
+  const sc = String(status);
+  const badgeClass = ['200','201'].includes(sc) ? 's200' :
+                     sc === '404' ? 's404' :
+                     sc === '406' ? 's406' :
+                     sc === '409' ? 's409' :
+                     sc === '419' ? 's419' : 's503';
+
+  let bodyHtml = '';
+  if (bodyLines) {
+    bodyHtml = `<div class="entry-body">${bodyLines.map(l =>
+      `<span class="key">${l.k}:</span> <span class="val">${l.v}</span>`
+    ).join(' &nbsp;·&nbsp; ')}</div>`;
+  }
+
+  let detailHtml = '';
+  if (detailObj) {
+    detailHtml = `<div class="response-detail" id="detail-${Date.now()}">
+      ${syntaxHighlight(JSON.stringify(detailObj, null, 2))}
+    </div>`;
+  }
+
+  entry.innerHTML = `
+    <div class="entry-header">
+      <span class="entry-method ${method}">${method}</span>
+      <span class="status-badge ${badgeClass}">${status} ${statusText}</span>
+      <span class="entry-uri">${uri}</span>
+    </div>
+    ${bodyHtml}
+    ${detailHtml}
+  `;
+
+  if (detailObj) {
+    entry.addEventListener('click', () => {
+      const d = entry.querySelector('.response-detail');
+      d.classList.toggle('visible');
+    });
+    entry.title = 'Click to expand response';
+  }
+
+  log.prepend(entry);
+}
+
+function syntaxHighlight(json) {
+  return json
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) return `<span class="key">${match}</span>`;
+        return `<span class="str">${match}</span>`;
+      }
+      if (/true/.test(match)) return `<span class="bool-true">${match}</span>`;
+      if (/false/.test(match)) return `<span class="bool-false">${match}</span>`;
+      return `<span class="num">${match}</span>`;
+    });
+}
+
+function clearLog() {
+  document.getElementById('logEntries').innerHTML = `
+    <div style="padding:20px; color:var(--text-dim); font-size:0.65rem">Log cleared.</div>
+  `;
+}
+
+// ─── PROTOCOL METHODS ────────────────────────────────────────────────────────
+
+function doTap() {
+  const tap = getTap();
+  const style = document.getElementById('hdrStyle').value;
+  const temp = parseInt(document.getElementById('hdrTemp').value);
+  const vessel = document.getElementById('hdrVessel').value;
+  const foam = document.getElementById('hdrFoam').value;
+
+  const uri = `${tap.scheme}://${tap.id}/${vessel}`;
+
+  // Validate vessel
+  if (vessel === 'goblet' && style !== 'Trappist' && style !== '*') {
+    addLog('TAP', uri, 406, 'Not Acceptable',
+      [{k:'error', v:'goblet is reserved for Trappist ales'}, {k:'rfc', v:'RFC 1516 §4'}],
+      { status: 406, error: "Not Acceptable", detail: "The goblet vessel-size is valid only for Trappist beer.", rfc: "RFC 1516 §4" }
+    );
+    return;
+  }
+
+  // Validate style availability
+  if (style !== '*' && !tap.compatible.includes(style) && tap.style !== style) {
+    addLog('TAP', uri, 406, 'Not Acceptable',
+      [{k:'error', v:`${style} not available on ${tap.id}`}, {k:'available', v:tap.compatible.join(', ')}],
+      { status: 406, error: "Not Acceptable", requested_style: style, available: tap.compatible, rfc: "RFC 1516 §3.3.3" }
+    );
+    return;
+  }
+
+  // Validate temperature for Stout
+  if (tap.style === 'Stout' && temp <= 5) {
+    addLog('TAP', uri, 406, 'Not Acceptable',
+      [{k:'error', v:'MUST NOT serve Stout at 3°C — RFC 1516 §3.2.3'}],
+      { status: 406, error: "Temperature violation", detail: "A server MUST NOT serve a Stout at 3°C. This is not a SHOULD NOT. This is a MUST NOT.", temp_requested: temp, allowed_range: "10–13°C", rfc: "RFC 1516 §3.2.3" }
+    );
+    return;
+  }
+
+  // Validate temperature range
+  if (temp < tap.tempRange[0] - 2 || temp > tap.tempRange[1] + 2) {
+    addLog('TAP', uri, 406, 'Not Acceptable',
+      [{k:'error', v:`${temp}°C out of range for ${tap.style}`}, {k:'range', v:`${tap.tempRange[0]}–${tap.tempRange[1]}°C`}],
+      { status: 406, error: "Temperature out of range", requested: temp, allowed_range: `${tap.tempRange[0]}–${tap.tempRange[1]}°C`, style: tap.style }
+    );
+    return;
+  }
+
+  // Belgian foam in non-Belgian style
+  if (foam === 'belgian' && tap.style !== 'Trappist' && tap.style !== 'Lambic') {
+    addLog('TAP', uri, 406, 'Not Acceptable',
+      [{k:'error', v:"belgian foam on a non-Belgian style is philosophically inconsistent"}],
+      { status: 406, error: "Foam conflict", detail: "Belgian foam level SHOULD only be applied to Trappist or Lambic styles.", rfc: "RFC 1516 §3.2.2" }
+    );
+    return;
+  }
+
+  // 200 OK — open session
+  tap.sessionOpen = true;
+  tap.brewVersion++;
+  mugLevel = 0;
+  updateMugVisual(0, 0);
+
+  addLog('TAP', uri, 200, 'OK',
+    [{k:'body', v:'"open"'}, {k:'Content-Type', v:'message/mugpot'}, {k:'X-Brew-Version', v:tap.brewVersion}],
+    {
+      status: 200, method: "TAP", body: "open",
+      "Content-Type": "message/mugpot",
+      tap: tap.id, style: tap.style,
+      temperature: `${tap.temp}°C`,
+      pressure: `${tap.pressure} BAR`,
+      "Accept-Foam": foam,
+      "X-Brew-Version": tap.brewVersion,
+      "X-Protocol": "HTBMCP/1.0",
+      "X-RFC": "RFC-1516",
+      note: "Session opened. POUR requests now accepted."
+    }
+  );
+
+  updateTapVisual();
+  updateButtons();
+}
+
+function doPour() {
+  const tap = getTap();
+  const foam = document.getElementById('hdrFoam').value;
+  const vessel = document.getElementById('hdrVessel').value;
+  const uri = `${tap.scheme}://${tap.id}/${vessel}`;
+
+  if (tap.level === 0) {
+    addLog('POUR', uri, 503, 'Service Unavailable',
+      [{k:'error', v:'Keg empty — dispensing air is not beer'}],
+      { status: 503, error: "Service Unavailable", detail: "The keg is empty. The server SHOULD return this code rather than attempting to dispense air, which is not beer and has never been beer.", rfc: "RFC 1516 §3.3.6" }
+    );
+    return;
+  }
+
+  tap.pouring = true;
+  const pourStream = document.getElementById('pourStream');
+  pourStream.classList.add('active');
+
+  addLog('POUR', uri, 200, 'OK',
+    [{k:'body', v:'"start"'}, {k:'foam', v:foam}, {k:'keg', v:tap.level+'%'}],
+    {
+      status: 200, method: "POUR", body: "start",
+      "Content-Type": "message/mugpot",
+      pour_status: "dispensing",
+      foam_level: foam,
+      keg_level: tap.level + "%",
+      "X-Brew-Version": tap.brewVersion,
+      "X-Protocol": "HTBMCP/1.0",
+      note: `Beer is flowing. Foam model: ${foam}. Say WHEN when ready.`
+    }
+  );
+
+  updateTapVisual();
+  updateButtons();
+
+  // Simulate pour + foam
+  let progress = 0;
+  const foamDelay = foam === 'none' ? 999 : foam === 'light' ? 85 : foam === 'heavy' ? 60 : foam === 'belgian' ? 40 : 75;
+
+  pourTimer = setInterval(() => {
+    progress += 3;
+    mugLevel = Math.min(progress, 100);
+    const foamPct = progress > foamDelay ? Math.min((progress - foamDelay) * 3, 100) : 0;
+    updateMugVisual(mugLevel, foamPct);
+
+    if (progress > foamDelay && !tap.foaming) {
+      tap.foaming = true;
+      updateTapVisual();
+    }
+
+    if (progress >= 100) {
+      clearInterval(pourTimer);
+      pourTimer = null;
+      tap.pouring = false;
+      tap.foaming = false;
+      tap.level = Math.max(0, tap.level - 12);
+      pourStream.classList.remove('active');
+      updateTapVisual();
+      updateButtons();
+
+      addLog('POUR', uri, 200, 'OK',
+        [{k:'status', v:'complete'}, {k:'keg_remaining', v:tap.level+'%'}],
+        { status: 200, pour_status: "complete", keg_remaining: tap.level + "%", note: "Mug full. Enjoy responsibly." }
+      );
+    }
+  }, 80);
+}
+
+function doWhen() {
+  const tap = getTap();
+  const uri = `${tap.scheme}://${tap.id}/stop-foam`;
+
+  if (!tap.pouring) {
+    addLog('WHEN', uri, 200, 'OK',
+      [{k:'note', v:'WHEN acknowledged — no pour in progress, enthusiasm appreciated'}],
+      { status: 200, method: "WHEN", acknowledged: true, note: "No pour was in progress, but the client's enthusiasm is appreciated.", rfc: "RFC 1516 §3.1.5" }
+    );
+    return;
+  }
+
+  clearInterval(pourTimer);
+  pourTimer = null;
+  tap.pouring = false;
+  tap.foaming = false;
+  document.getElementById('pourStream').classList.remove('active');
+  tap.level = Math.max(0, tap.level - Math.round(mugLevel / 10));
+  updateMugVisual(mugLevel, 0);
+  updateTapVisual();
+  updateButtons();
+
+  addLog('WHEN', uri, 200, 'OK',
+    [{k:'foam', v:'stopped'}, {k:'mug', v:Math.round(mugLevel)+'% full'}, {k:'rfc', v:'§3.1.5'}],
+    {
+      status: 200, method: "WHEN",
+      foam_stopped: true,
+      mug_fill: Math.round(mugLevel) + "%",
+      message: "Milk—foam pouring stopped. The server has acknowledged WHEN.",
+      rfc: "RFC 1516 §3.1.5",
+      note: "There is no WHEN-WHEN method. Once is sufficient."
+    }
+  );
+}
+
+function doGet() {
+  const tap = getTap();
+  const uri = `${tap.scheme}://${tap.id}/status`;
+
+  const status = tap.level === 0 ? 'empty' :
+                 tap.pouring && tap.foaming ? 'foam-overflow' :
+                 tap.pouring ? 'pouring' :
+                 tap.sessionOpen ? 'tapped' : 'idle';
+
+  addLog('GET', uri, 200, 'OK',
+    [{k:'style', v:tap.style}, {k:'level', v:tap.level+'%'}, {k:'status', v:status}],
+    {
+      status: 200, method: "GET",
+      tap: tap.id,
+      beer_style: tap.style,
+      keg_level: tap.level + "%",
+      pour_status: status,
+      temperature: tap.temp + "°C",
+      pressure: tap.pressure + " BAR",
+      session_open: tap.sessionOpen,
+      "brew_version": tap.brewVersion,
+      "X-Protocol": "HTBMCP/1.0",
+      note: "The data returned by GET contains no beer. This is an important distinction."
+    }
+  );
+}
+
+function doPropfind() {
+  const tap = getTap();
+  const uri = `${tap.scheme}://${tap.id}/styles`;
+
+  const availableStyles = BEER_STYLES.map(s => ({
+    name: s.name,
+    ibu: s.ibu,
+    temp_range: s.temp,
+    available: tap.compatible.includes(s.name) || tap.style === s.name
+  }));
+
+  addLog('PROPFIND', uri, 200, 'OK',
+    [{k:'styles', v:tap.compatible.join(', ')}, {k:'temp', v:`${tap.tempRange[0]}–${tap.tempRange[1]}°C`}],
+    {
+      status: 200, method: "PROPFIND",
+      tap: tap.id,
+      currently_connected: tap.style,
+      available_styles: availableStyles,
+      foam_capable: true,
+      foam_levels: ["none", "light", "normal", "heavy", "belgian"],
+      temperature_range: `${tap.tempRange[0]}–${tap.tempRange[1]}°C`,
+      pressure: tap.pressure + " BAR",
+      non_alcoholic: "NOT_ACCEPTABLE — No provision is made for non-alcoholic beer. What would be the point? (RFC 1516 §3.2.4)",
+      rfc: "RFC 1516 §3.1.4"
+    }
+  );
+
+  // Also render a pretty table in the log
+  const log = document.getElementById('logEntries');
+  const tableEntry = document.createElement('div');
+  tableEntry.className = 'log-entry';
+  tableEntry.innerHTML = `
+    <div style="font-size:0.6rem; color:var(--text-dim); margin-bottom:8px; letter-spacing:0.08em; text-transform:uppercase">
+      PROPFIND — Available styles on ${tap.id}
+    </div>
+    <table class="propfind-table">
+      <thead><tr><th>Style</th><th>IBU</th><th>Temp</th><th>Available</th></tr></thead>
+      <tbody>
+        ${availableStyles.map(s => `
+          <tr>
+            <td>${s.name}</td>
+            <td><span class="ibu-bar" style="width:${s.ibu}px"></span>${s.ibu}</td>
+            <td>${s.temp_range}</td>
+            <td style="color:${s.available ? 'var(--green)' : 'var(--text-dim)'}">
+              ${s.available ? '✓' : '—'}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  log.prepend(tableEntry);
+}
+
+function doTapClose() {
+  const tap = getTap();
+  const vessel = document.getElementById('hdrVessel').value;
+  const uri = `${tap.scheme}://${tap.id}/${vessel}`;
+
+  if (tap.pouring) {
+    clearInterval(pourTimer);
+    pourTimer = null;
+    tap.pouring = false;
+    tap.foaming = false;
+    document.getElementById('pourStream').classList.remove('active');
+    updateMugVisual(mugLevel, 0);
+  }
+
+  tap.sessionOpen = false;
+  mugLevel = 0;
+  updateMugVisual(0, 0);
+  updateTapVisual();
+  updateButtons();
+
+  addLog('TAP', uri, 200, 'OK',
+    [{k:'body', v:'"close"'}, {k:'Content-Type', v:'message/mugpot'}],
+    {
+      status: 200, method: "TAP", body: "close",
+      "Content-Type": "message/mugpot",
+      session: "closed",
+      note: "Any in-progress POUR requests SHOULD be allowed to complete. It would be rude to do otherwise.",
+      rfc: "RFC 1516 §3.1.1"
+    }
+  );
+}
+
+function triggerWineGlass() {
+  // 419 I'm a Wine Glass
+  addLog('POUR', 'beer://wine-glass-1/none', 419, "I'm a Wine Glass",
+    [{k:'error', v:'A wine glass is not a mug'}, {k:'rfc', v:'§3.3.5'}],
+    {
+      status: 419,
+      error: "I'm a Wine Glass",
+      body: "The resulting entity body MAY be stemmed and fragile.",
+      detail: "A wine glass is not a mug. A wine glass has no handle. Beer poured into a wine glass loses carbonation 23% faster, a figure the authors have not verified but feel is directionally correct.",
+      rfc: "RFC 1516 §3.3.5",
+      suggestion: "Please provide a proper mug. Steins also acceptable."
+    }
+  );
+  document.getElementById('overlay').classList.add('visible');
+  document.getElementById('wineGlassMsg').classList.add('visible');
+}
+
+function closeWineGlass() {
+  document.getElementById('overlay').classList.remove('visible');
+  document.getElementById('wineGlassMsg').classList.remove('visible');
+}
+
+// Init
+updateTapVisual();
+updateButtons();
+</script>
+</body>
+</html>
