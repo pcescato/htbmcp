@@ -207,7 +207,7 @@ curl -X TAP http://localhost:1414/tap/tap-gdansk \
 pytest test_htbmcp.py -v
 ```
 
-35 tests covering the full protocol: TAP/POUR/WHEN/GET/PROPFIND workflows, all 406/409/419/503 conditions, concurrent session detection, `brew_version` conflict, the Gdansk `piwo://` tap, Trappist in a goblet at 14°C with belgian foam, and the WHEN-once-is-sufficient invariant.
+41 tests covering the full protocol: TAP/POUR/WHEN/GET/PROPFIND workflows, all 406/409/419/503 conditions, concurrent session detection, `brew_version` conflict, the Gdansk `piwo://` tap, Trappist in a goblet at 14°C with belgian foam, and the WHEN-once-is-sufficient invariant.
 
 ### Open the browser simulator
 
