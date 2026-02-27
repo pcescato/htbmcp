@@ -1,0 +1,723 @@
+Network Working Group                                       P. Cescato
+Request for Comments: 1516                                  Independent
+Category: Informational                                    27 February 2026
+
+
+         Hyper Text Beer Mug Control Protocol (HTBMCP/1.0)
+
+Status of This Memo
+
+   This memo provides information for the Internet community.  This memo
+   does not specify an Internet standard of any kind.  Distribution of
+   this memo is unlimited.  The authors encourage implementors to
+   actually build this.  Several have already done so with less
+   justification.
+
+Copyright Notice
+
+   Copyright (C) The Internet Society (2026).  All Rights Reserved.
+
+Abstract
+
+   There is beer all around the world.  Increasingly, in a world in
+   which computation is ubiquitous, the consumption of beer in proximity
+   to networked devices creates a strong operational requirement.  Beer
+   dispensing is an art, but the distributed intelligence of the Web
+   has long since surpassed mere art.  Thus, there is a strong, hoppy,
+   well-carbonated requirement for a protocol designed expressly for the
+   distribution of beer.
+
+   Beer is distributed using taps connected to mugs.  Networked taps
+   require a control protocol if they are to be operated remotely.
+
+   This document specifies the Hyper Text Beer Mug Control Protocol
+   (HTBMCP/1.0), which permits the full request and response cycle
+   necessary to control all devices capable of dispensing fermented
+   malt beverages.  This protocol is built on top of HTTP.  This is
+   because HTTP is everywhere.  Beer should also be everywhere.  The
+   logic is sound.
+
+
+Table of Contents
+
+   1.  Rationale and Scope  . . . . . . . . . . . . . . . . . . . .  3
+   2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . .  3
+   3.  HTBMCP Protocol  . . . . . . . . . . . . . . . . . . . . . .  4
+     3.1.  Added Methods  . . . . . . . . . . . . . . . . . . . . .  4
+       3.1.1.  The TAP Method . . . . . . . . . . . . . . . . . . .  4
+       3.1.2.  The POUR Method  . . . . . . . . . . . . . . . . . .  5
+       3.1.3.  The GET Method . . . . . . . . . . . . . . . . . . .  5
+       3.1.4.  The PROPFIND Method  . . . . . . . . . . . . . . . .  5
+       3.1.5.  The WHEN Method  . . . . . . . . . . . . . . . . . .  6
+     3.2.  Header Fields  . . . . . . . . . . . . . . . . . . . . .  6
+       3.2.1.  Accept-Style . . . . . . . . . . . . . . . . . . . .  6
+       3.2.2.  Accept-Foam  . . . . . . . . . . . . . . . . . . . .  7
+       3.2.3.  Accept-Temperature . . . . . . . . . . . . . . . . .  7
+       3.2.4.  Omitted Header Fields  . . . . . . . . . . . . . . .  8
+     3.3.  HTBMCP Return Codes  . . . . . . . . . . . . . . . . . .  8
+       3.3.1.  200 OK . . . . . . . . . . . . . . . . . . . . . . .  8
+       3.3.2.  404 Not Found  . . . . . . . . . . . . . . . . . . .  8
+       3.3.3.  406 Not Acceptable . . . . . . . . . . . . . . . . .  8
+       3.3.4.  409 Conflict . . . . . . . . . . . . . . . . . . . .  9
+       3.3.5.  419 I'm a Wine Glass . . . . . . . . . . . . . . . .  9
+       3.3.6.  503 Service Unavailable  . . . . . . . . . . . . . .  9
+   4.  The "beer" URI Scheme  . . . . . . . . . . . . . . . . . . .  9
+   5.  The "message/mugpot" Media Type  . . . . . . . . . . . . . . 10
+   6.  Operational Constraints  . . . . . . . . . . . . . . . . . . 11
+     6.1.  Temperature Compliance  . . . . . . . . . . . . . . . . 11
+     6.2.  Pressure Considerations . . . . . . . . . . . . . . . . 11
+     6.3.  Foam Dynamics  . . . . . . . . . . . . . . . . . . . . . 12
+     6.4.  Crossing Firewalls . . . . . . . . . . . . . . . . . . . 12
+   7.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . 12
+   8.  Security Considerations  . . . . . . . . . . . . . . . . . . 13
+   9.  References . . . . . . . . . . . . . . . . . . . . . . . . . 13
+     9.1.  Normative References . . . . . . . . . . . . . . . . . . 13
+     9.2.  Informative References . . . . . . . . . . . . . . . . . 14
+   10. Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . 14
+   11. Author's Address . . . . . . . . . . . . . . . . . . . . . . 14
+   12. Full Copyright Statement . . . . . . . . . . . . . . . . . . 15
+
+
+1.  Rationale and Scope
+
+   The Reinheitsgebot [REIN1516], promulgated in Bavaria on 23 April
+   1516, established the first formal specification for beer production,
+   constraining ingredients to water, barley, and hops.  This document
+   represents the logical extension of that standardization effort to
+   the network layer, some five hundred and ten years later.
+
+   The earliest known written attestation of the word "piwo" (beer, in
+   Polish) appears in municipal archives from Gdansk, dated 1414, a
+   document since lost during the Second World War [PIWO1414].  That
+   this document is now lost makes the need for robust, distributed,
+   network-accessible beer management protocols all the more urgent.
+   We must not lose the beer again.
+
+   This document does not cover the brewing process itself.  Brewing
+   falls under the purview of the Hyper Text Brewery Control Protocol
+   (HTBCP), a companion specification that the author intends to
+   write someday, possibly after a beer.  HTBMCP concerns itself
+   exclusively with the distribution and service of already-brewed
+   beer, from tap to mug.
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119],
+   except in cases where the author had already started on his second
+   pint, in which case the distinction between MUST and SHOULD becomes
+   philosophically murky.
+
+
+2.  Terminology
+
+   The following terms are used in this document:
+
+   Tap:     A physical or virtual device capable of dispensing beer
+            from a pressurized vessel into a receiving container.
+            A tap is identified by a beer:// URI.
+
+   Mug:     The receiving container.  HTBMCP does not mandate the
+            material, volume, or handle configuration of the mug,
+            though the author STRONGLY RECOMMENDS a handle.  A mug
+            without a handle is a glass, and glasses are out of scope
+            (see Section 3.3.5).
+
+   Pour:    The act of dispensing beer from a tap into a mug.  Not
+            to be confused with Brew, which is upstream of this
+            protocol's concerns.
+
+   Foam:    The layer of CO2 bubbles that forms at the surface of a
+            poured beer.  Foam is not merely tolerated; it is a
+            protocol feature.  The WHEN method exists specifically
+            to manage it.  See Section 3.1.5.
+
+   Head:    See Foam.  The two terms are used interchangeably in
+            this document, as in life.
+
+   Flat:    A beer with insufficient carbonation.  A server SHOULD
+            return 503 Service Unavailable if a keg is known to be
+            flat, rather than pour a substandard product.  The
+            integrity of the protocol depends on it.
+
+   Session: In the context of HTBMCP, a session begins with a TAP
+            request and concludes when the keg reaches empty.  Session
+            persistence across multiple POUR requests from different
+            clients is a REQUIRED capability.
+
+   Pint:    A unit of volume.  The server SHOULD be aware that a
+            pint in the United States (473 ml) differs from a pint
+            in the United Kingdom (568 ml), and that this discrepancy
+            has caused more international incidents than is generally
+            acknowledged.
+
+
+3.  HTBMCP Protocol
+
+   HTBMCP is built on top of HTTP, with the addition of new methods,
+   header fields, and return codes.  All HTBMCP servers MUST be
+   addressable via the "beer:" URI scheme (Section 4).
+
+   The default port for HTBMCP is 1414.  This port number was chosen
+   in honor of the earliest known written attestation of the word
+   "piwo" in the municipal archives of Gdansk (1414), a document
+   which, as noted in Section 1, no longer exists.  Port 1414 is
+   therefore a memorial as much as a transport binding.
+
+
+3.1.  Added Methods
+
+3.1.1.  The TAP Method
+
+   The TAP method initiates a dispensing session on a given tap.  A
+   TAP request MUST be issued before any POUR requests on the same
+   tap.  The server SHOULD validate that a keg is connected, pressurized,
+   and contains a non-trivial quantity of beer before responding 200 OK.
+
+   A server MUST accept both TAP and POST as equivalent methods.
+   However, the use of POST to initiate a beer dispensing session is
+   STRONGLY DISCOURAGED, as it implies a degree of informality
+   inconsistent with the gravity of the occasion.
+
+   The request body of a TAP request MUST be of Content-Type
+   "message/mugpot" (Section 5) and MUST contain one of:
+
+      tap-body = "open" / "close"
+
+   A TAP request with body "close" terminates the current dispensing
+   session.  Any in-progress POUR requests at the time of a TAP close
+   SHOULD be allowed to complete.  It would be rude to do otherwise.
+
+   Example:
+
+      TAP beer://tap-1/pint HTTP/1.1
+      Host: bar.example.com
+      Content-Type: message/mugpot
+      Accept-Style: IPA
+      Accept-Temperature: 8
+
+      open
+
+3.1.2.  The POUR Method
+
+   The POUR method instructs the server to dispense beer into the
+   specified mug.  The server MUST NOT execute a POUR request if no
+   TAP session is currently open on the target resource.
+
+   The request body MUST be of Content-Type "message/mugpot" and
+   MUST contain:
+
+      pour-body = "start" / "stop"
+
+   A POUR request with body "start" begins dispensing.  The server
+   will continue dispensing until one of the following conditions
+   is met:
+
+   (a) The mug reaches capacity, as declared in the URI (Section 4).
+   (b) A WHEN request is received (Section 3.1.5).
+   (c) The keg runs dry, in which case the server MUST return 503.
+   (d) A foam overflow condition is detected (implementation-defined).
+
+   A POUR request with body "stop" is equivalent to a WHEN request
+   and is provided for clients that find the WHEN method semantically
+   jarring.
+
+3.1.3.  The GET Method
+
+   The GET method, inherited from HTTP, is used to retrieve the
+   current state of a tap or keg.  A GET request on a beer:// URI
+   MUST return a representation of the tap's current status, including
+   at minimum:
+
+   - Keg level (percentage remaining)
+   - Current pour status (idle / pouring / foam-overflow)
+   - Beer style currently connected
+   - Temperature (Celsius)
+   - Carbonation pressure (BAR)
+
+   The data returned by GET contains no beer.  This is an important
+   distinction.  Implementors who confuse GET with POUR will be
+   disappointed.
+
+3.1.4.  The PROPFIND Method
+
+   If the data is a mug of beer, the metadata about the available
+   beer styles is discovered using the PROPFIND method, inherited
+   from WebDAV [RFC4918] and previously adopted by HTCPCP [RFC2324].
+
+   A PROPFIND response MUST enumerate all beer styles currently
+   available at the tap, along with their associated temperature
+   ranges and IBU values.  Clients SHOULD use this information to
+   set appropriate Accept-Style and Accept-Temperature headers in
+   subsequent POUR requests.
+
+3.1.5.  The WHEN Method
+
+   When beer is being poured, and foam is forming, it is necessary
+   for the holder of the mug to indicate the point at which sufficient
+   foam has accumulated.  To this end, the WHEN method has been added
+   to HTBMCP.  Enough?  Say WHEN.
+
+   This method is inherited directly from HTCPCP [RFC2324], Section
+   2.1.4.  The authors of that document deserve full credit for
+   recognizing that human-computer interaction sometimes requires
+   nothing more than the word "when."
+
+   A WHEN request MUST cause the server to immediately cease foam
+   dispensing.  If no pour is in progress, the server MUST return
+   200 OK with a body indicating that the WHEN was acknowledged,
+   and that the client's enthusiasm is appreciated.
+
+   There is no WHEN-WHEN method.  Once is sufficient.
+
+
+3.2.  Header Fields
+
+3.2.1.  Accept-Style
+
+   The Accept-Style header field indicates the beer style acceptable
+   to the client.  The server SHOULD honor this preference.  If the
+   requested style is unavailable, the server MUST return 406 Not
+   Acceptable with a list of available styles.
+
+      Accept-Style = "Accept-Style" ":"
+                     style-range *( ";" style-param )
+
+      style-range   = ( "*"
+                      | style-type
+                      )
+
+      style-type    = ( "Lager"
+                      | "Pilsner"
+                      | "Ale"
+                      | "IPA"
+                      | "Stout"
+                      | "Porter"
+                      | "Wheat"
+                      | "Sour"
+                      | "Lambic"
+                      | "Trappist"
+                      )
+
+   The use of "*" in Accept-Style indicates that the client will
+   accept any beer style.  This is the default behavior for clients
+   that are very thirsty and not particularly fussy.
+
+   Servers MAY extend this list with local or seasonal varieties.
+   A server in Belgium SHOULD list at least three Trappist varieties.
+   This is not optional.
+
+3.2.2.  Accept-Foam
+
+   The Accept-Foam header field indicates the client's foam preference.
+   Foam is not an error condition.  Foam is a feature.  The WHEN method
+   exists precisely to manage it.
+
+      Accept-Foam   = "Accept-Foam" ":" foam-level
+
+      foam-level    = ( "none"
+                      | "light"       ; 0.5 cm - 1 cm
+                      | "normal"      ; 1 cm - 2 cm  [DEFAULT]
+                      | "heavy"       ; 2 cm - 4 cm
+                      | "belgian"     ; implementation-defined,
+                      )               ; but significant
+
+   The "belgian" foam level is provided in recognition of the fact
+   that certain beer traditions consider foam to be structurally
+   and philosophically integral to the beverage.  Servers supporting
+   "belgian" foam MUST NOT apply a strict centimeter interpretation.
+
+   If the Accept-Foam header is absent, the server MUST default to
+   "normal".
+
+   A server that cannot produce foam MUST indicate this in its
+   PROPFIND response and SHOULD feel some shame about it.
+
+3.2.3.  Accept-Temperature
+
+   The Accept-Temperature header field specifies the client's preferred
+   serving temperature in degrees Celsius.  The server SHOULD attempt
+   to honor this preference within a tolerance of +/- 1 degree.
+
+      Accept-Temperature = "Accept-Temperature" ":" temperature-value
+
+      temperature-value  = 1*2DIGIT   ; degrees Celsius
+
+   Recommended temperature ranges by style are as follows:
+
+      Lager, Pilsner    :  3C -  7C
+      Wheat             :  4C -  7C
+      IPA               :  7C - 10C
+      Ale, Porter       :  8C - 12C
+      Stout             : 10C - 13C
+      Trappist          : 12C - 16C
+      Lambic, Sour      : 10C - 14C
+
+   A server MUST NOT serve a Stout at 3 degrees Celsius.  This is not
+   a SHOULD NOT.  This is a MUST NOT.  The authors feel strongly about
+   this.
+
+   Serving temperature in Fahrenheit is not supported.  The authors
+   considered it and decided against it.
+
+3.2.4.  Omitted Header Fields
+
+   No provision is made for non-alcoholic beer.  What would be the
+   point?
+
+   The authors acknowledge that some clients may be operating under
+   constraints (medical, operational, or otherwise) that preclude
+   alcohol consumption.  These clients are directed to HTCPCP [RFC2324],
+   which remains an excellent protocol for the control of alternative
+   hot beverages.
+
+
+3.3.  HTBMCP Return Codes
+
+   Standard HTTP return codes are used where applicable.  This section
+   identifies HTBMCP-specific interpretations and one new return code.
+
+3.3.1.  200 OK
+
+   Beer is being poured.  The response body MUST contain a
+   message/mugpot entity with current pour status, estimated
+   completion time, and foam level.
+
+3.3.2.  404 Not Found
+
+   The requested tap does not exist.  The client should consult the
+   establishment's menu and try a different URI.  The server SHOULD
+   include a list of available taps in the response body, as a
+   courtesy.
+
+3.3.3.  406 Not Acceptable
+
+   The server cannot comply with the Accept-Style, Accept-Foam, or
+   Accept-Temperature constraints specified in the request.  The
+   response MUST include a list of available styles and their
+   associated parameters.
+
+   Common causes include:
+
+   - Requesting a Trappist ale at a stadium concession stand.
+   - Requesting "none" foam in Belgium.
+   - Requesting a temperature outside the range supported by the
+     server's refrigeration system.
+
+3.3.4.  409 Conflict
+
+   A concurrent POUR request was detected on the same tap.  The keg
+   has a brew_version token; if the client's X-Brew-Version header
+   does not match the server's current version, the server MUST return
+   409 and include the current version in the response body.
+
+   This code is also returned if a TAP open request is received when
+   a session is already active.  Servers MUST NOT silently allow
+   two simultaneous sessions on the same tap.  This is how keg lines
+   get contaminated.
+
+3.3.5.  419 I'm a Wine Glass
+
+   Any attempt to pour beer into a wine glass SHOULD result in the
+   error code "419 I'm a Wine Glass."  The resulting entity body MAY
+   be stemmed and fragile.
+
+   A wine glass is not a mug.  A wine glass has no handle.  Beer
+   poured into a wine glass loses carbonation 23% faster, a figure
+   the authors have not verified but feel is directionally correct.
+
+   Server implementations MAY use vessel-detection mechanisms to
+   enforce this constraint.  Implementations that cannot detect the
+   vessel type SHOULD document this limitation clearly in their
+   PROPFIND response.
+
+3.3.6.  503 Service Unavailable
+
+   The keg is empty.  The server SHOULD return this code rather than
+   attempting to dispense air, which is not beer and has never been
+   beer.
+
+   A server MUST NOT return 419 for an empty keg.  The keg is not a
+   wine glass.  It is simply empty.  These are different problems.
+
+
+4.  The "beer" URI Scheme
+
+   Since beer is international, there is an international beer URI
+   scheme.  The canonical scheme name is "beer", but servers SHOULD
+   also respond to the following regional variants:
+
+      beer-scheme   = ( "beer"           ; English
+                      | "bier"           ; German, Dutch, Afrikaans
+                      | "bière"          ; French
+                      | "birra"          ; Italian
+                      | "cerveza"        ; Spanish
+                      | "cerveja"        ; Portuguese
+                      | "piwo"           ; Polish (Gdansk, 1414)
+                      | "pivo"           ; Czech, Slovak, Croatian
+                      | "öl"             ; Swedish, Norwegian
+                      | "olut"           ; Finnish
+                      | "bira"           ; Turkish
+                      | "mpishi"         ; Swahili
+                      | "%EB%A7%A5%EC%A3%BC" ; Korean
+                      | "%E3%83%93%E3%83%BC%E3%83%AB" ; Japanese
+                      | "%E5%95%A4%E9%85%92" ; Chinese
+                      )
+
+   The "piwo" scheme is listed separately and with explicit
+   attribution because the authors feel it deserves it.
+
+   The beer URI syntax is as follows:
+
+      beer-URL      = beer-scheme ":" [ "//" host ]
+                      "/" tap-identifier
+                      "/" vessel-size
+                      [ "?" additions ]
+
+      tap-identifier = "tap-" 1*DIGIT
+
+      vessel-size   = ( "pint"           ; implementation-defined,
+                      | "half-pint"      ;   see Section 2 re: US/UK
+                      | "stein"          ; >= 500ml, handle required
+                      | "tulip"          ; 330ml, acceptable
+                      | "goblet"         ; Trappist only
+                      )
+
+   Examples:
+
+      beer://bar.example.com/tap-1/pint
+      piwo://gdansk.example.pl/tap-3/pint?Accept-Style=Lager
+      bière://paris.example.fr/tap-2/goblet?Accept-Style=Trappist
+
+
+5.  The "message/mugpot" Media Type
+
+   The body of a TAP or POUR request MUST be of Content-Type
+   "message/mugpot".  This media type is registered with IANA
+   (Section 7).
+
+   Since most control information is conveyed via headers, the
+   message/mugpot body is intentionally minimal:
+
+      mugpot-body   = tap-command / pour-command
+
+      tap-command   = "open" / "close"
+
+      pour-command  = "start" / "stop"
+
+   Clients MUST NOT include beer recipes, opinions about hop ratios,
+   or unsolicited commentary on the relative merits of lagers versus
+   ales in the message body.  Such information is outside the scope
+   of this protocol, and the server is under no obligation to read it.
+
+
+6.  Operational Constraints
+
+6.1.  Temperature Compliance
+
+   Serving temperature is not a preference.  It is a constraint.
+   A server that cannot maintain the temperature specified in
+   Accept-Temperature within +/- 1 degree Celsius MUST return 503,
+   not a warm beer.
+
+   A warm beer is worse than no beer.  This is not a philosophical
+   position.  It is an engineering requirement.
+
+   Servers in warm climates SHOULD invest in adequate refrigeration
+   before implementing HTBMCP.  Implementing the protocol without
+   adequate refrigeration is possible but strongly discouraged, in
+   the same way that implementing HTCPCP without a coffee pot is
+   possible but misses the point.
+
+6.2.  Pressure Considerations
+
+   Keg pressure directly affects carbonation and foam dynamics.
+   Servers MUST monitor keg pressure and SHOULD expose current
+   pressure in GET responses.
+
+   A keg at zero pressure is empty or has a line fault.  In either
+   case, 503 is the appropriate response.
+
+   Excessive pressure may cause foam overflow during POUR.  Servers
+   SHOULD implement foam overflow detection and MUST support the
+   WHEN method as the client-side corrective mechanism.  The protocol
+   is designed around the assumption that foam happens.  Plan for it.
+
+6.3.  Foam Dynamics
+
+   Foam is not a bug.  Foam is the visible consequence of dissolved
+   CO2 escaping solution upon pressure release.  This is physics.
+   The protocol does not attempt to override physics.  It provides
+   the WHEN method instead.
+
+   The time between POUR start and optimal foam formation is
+   beer-style-dependent and is considered implementation-defined.
+   Implementations are encouraged to model this accurately.
+   Implementations that return a 200 with perfectly flat beer are
+   not in violation of this specification, but may be in violation
+   of something more important.
+
+6.4.  Crossing Firewalls
+
+   In most organizations, HTTP traffic crosses firewalls fairly
+   easily.  Modern beer taps do not use fire.  However, a "firewall"
+   is useful for the protection of any keg from sources of heat,
+   and beer absolutely should be protected from heat.  Every server
+   room that contains a networked tap SHOULD be protected by a
+   firewall from heat sources, including, but not limited to,
+   overclocked CPUs, inefficient power supplies, and the ambient
+   enthusiasm of developers who have just shipped.
+
+
+7.  IANA Considerations
+
+   This document requests the following registrations from IANA:
+
+   o  URI scheme "beer" and all regional variants listed in Section 4,
+      to be registered as Permanent URI Schemes under [RFC7595].
+
+   o  Media type "message/mugpot", as described in Section 5.
+
+   o  TCP and UDP port 1414 for HTBMCP.  This port number was selected
+      for its historical significance (see Section 1) and its
+      availability at time of writing.  The authors note that port
+      1414 is not currently assigned to any service in the IANA
+      registry, a situation that this document intends to remedy.
+
+   IANA is respectfully asked to process these registrations
+   promptly, as the authors are thirsty.
+
+
+8.  Security Considerations
+
+   Anyone who comes between me and my post-deployment beer should be
+   considered a security threat.
+
+   Unauthorized access to networked beer dispensing systems could
+   result in serious denial-of-beer (DoB) attacks.  Unlike denial-of-
+   service attacks, DoB attacks have immediate and measurable impact
+   on developer productivity and morale.
+
+   Servers SHOULD implement authentication before accepting TAP
+   requests from unknown clients.  The specific authentication
+   mechanism is left to the implementor, but the authors RECOMMEND
+   something more robust than the honor system.
+
+   The POUR method SHOULD be rate-limited.  An unrestricted POUR loop
+   will empty a keg in finite time.  This has been empirically
+   verified.
+
+   Clients MUST implement the WHEN method.  A client that initiates a
+   POUR without implementing WHEN will eventually produce a foam
+   overflow condition.  This is a client-side bug, not a server-side
+   feature.
+
+   The use of cleartext HTTP for HTBMCP requests in production
+   environments is DISCOURAGED.  An attacker with network access could
+   intercept POUR requests, modify Accept-Style headers, and cause
+   a Trappist ale to be served at lager temperatures.  This is not
+   a theoretical attack.  The authors have seen it happen at
+   conferences.
+
+   The "piwo" URI scheme SHOULD be protected by the same security
+   mechanisms as the canonical "beer" scheme.  The fact that it is
+   written in Polish does not constitute security through obscurity.
+   The authors speak from experience.
+
+
+9.  References
+
+9.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC2324]  Masinter, L., "Hyper Text Coffee Pot Control Protocol
+              (HTCPCP/1.0)", RFC 2324, 1 April 1998.
+              The spiritual predecessor of this document.  Required
+              reading.
+
+   [RFC7168]  Notten, I., "The Hyper Text Coffee Pot Control Protocol
+              for Tea Efflux Appliances (HTCPCP-TEA)", RFC 7168,
+              1 April 2014.
+
+   [RFC4918]  Dusseault, L., "HTTP Extensions for Web Distributed
+              Authoring and Versioning (WebDAV)", RFC 4918, June 2007.
+              The PROPFIND method is borrowed from this document.
+              We acknowledge this debt with gratitude.
+
+   [REIN1516] Duke Wilhelm IV and Duke Ludwig X of Bavaria,
+              "Reinheitsgebot" (Beer Purity Law), Ingolstadt, Bavaria,
+              23 April 1516.  The first formal specification for beer
+              production.  Predates the IETF by approximately 460 years.
+              Available in the original Middle High German at various
+              Bavarian archives.  No errata have been filed.
+
+9.2.  Informative References
+
+   [PIWO1414] Municipal Archives of Gdansk, "Register entry containing
+              the word 'piwo'", 1414.  This document no longer exists.
+              Its loss during the Second World War is the proximate
+              motivation for port 1414 and for this entire specification.
+              We pour one out.
+
+   [RFC7595]  Thaler, D., "Guidelines and Registration Procedures for
+              URI Schemes", RFC 7595, June 2015.
+
+   [CAMCOFFEE] Stafford-Fraser, Q., and D. Gordon, "The Trojan Room
+              Coffee Pot", University of Cambridge Computer Laboratory,
+              1991-2001.  The original networked beverage monitoring
+              system.  If they had used beer, this RFC would have been
+              written in 1993.
+
+
+10.  Acknowledgements
+
+   The authors wish to thank Larry Masinter for RFC 2324, without which
+   this document would have no legitimate precedent and considerably
+   less confidence in its own existence.
+
+   The WHEN method is reproduced from HTCPCP [RFC2324] with minimal
+   modification, because it was already perfect.
+
+   Special thanks are due to Sylwia Laskowska of Gdansk, whose
+   suggestion that a beer protocol might be a worthy successor to
+   HTCPCP directly motivated this work, and whose city's 1414 municipal
+   archives provided the port number.  The authors hope she finds the
+   acknowledgement adequate.  She will probably also find the
+   implementation.
+
+   Thanks also to the developers who implemented HTCPCP and discovered
+   that uvicorn rejects custom HTTP methods at the socket layer.  Their
+   suffering was not in vain.  It is documented in the companion
+   implementation guide and will serve as a warning to others.
+
+   The Reinheitsgebot requires no acknowledgement.  It has been
+   enforcing standards compliance since 1516 without asking for credit.
+
+
+11.  Author's Address
+
+   Pascal Cescato
+   Independent
+
+   EMail: [author contact via dev.to/pascal_cescato_692b7a8a20]
+   URI:   https://dev.to/pascal_cescato_692b7a8a20
+
+
+12.  Full Copyright Statement
+
+   Copyright (C) The Internet Society (2026).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph
+   are included on all such copies and derivative works.
+
+   The authors explicitly encourage implementation.  Several have
+   already started without waiting for this copyright notice to be
+   finalized, which the authors consider a vote of confidence.
+
+
+Cescato                      Informational                     [Page 15]
